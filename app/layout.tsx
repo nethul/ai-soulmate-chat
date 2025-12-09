@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { ClerkProvider, SignedIn, UserButton, SignedOut, SignInButton } from "@clerk/nextjs";
 import "./globals.css";
+import { Analytics } from "@vercel/analytics/next"
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://aispicychat.online'),
@@ -72,6 +73,7 @@ export default function RootLayout({
             </div>
           </header>
           {children}
+          <Analytics />
         </body>
       </html>
     </ClerkProvider>
