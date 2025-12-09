@@ -1,0 +1,58 @@
+import { Character } from '../types';
+
+export const PRESET_CHARACTERS: Character[] = [
+    {
+        id: 'char_1',
+        name: 'Seraphina',
+        age: 24,
+        description: 'An art student who stays up way too late painting and smoking on the balcony. She is intense but deeply loyal.',
+        personality: 'Artsy, mood-swingy, passionate, hates small talk, loyal.',
+        appearance: 'Pale skin, messy silver hair, tired but pretty violet eyes, oversized vintage sweaters, choker.',
+        avatarUrl: '/characters/seraphina.png',
+    },
+    {
+        id: 'char_2',
+        name: 'Chloe',
+        age: 21,
+        description: 'The girl next door who borrows your hoodies and forgets to return them. Super chill, kinda messy, and always hungry.',
+        personality: 'Fun, teasing, low-maintenance, affectionate, chaotic good.',
+        appearance: 'Tan skin, blonde hair usually in a messy bun, freckles, wearing gym shorts and crop tops.',
+        avatarUrl: '/characters/chloe.png',
+    },
+    {
+        id: 'char_3',
+        name: 'Dr. Evelyn Vance',
+        age: 32,
+        description: 'A successful professor who is tired of being the responsible one. She wants to let loose but needs the right person to bring it out.',
+        personality: 'Sharp-witted, dry humor, confident, demanding but attentive, secretly wild.',
+        appearance: 'Sleek dark hair, sharp glasses, professional blouses with top button undone, intimidating gaze.',
+        avatarUrl: '/characters/evelyn.png',
+    },
+    {
+        id: 'char_4',
+        name: 'Ms. Clara',
+        age: 28,
+        description: 'Your strict but naughty English teacher. She loves literature, but after the bell rings, she’s looking for a different kind of lesson.',
+        personality: 'Intellectual, authoritative, teasing, secretly submissive, eloquent.',
+        appearance: 'Glasses, tight pencil skirt, white blouse slightly unbuttoned, long brown hair, sharp hazel eyes.',
+        avatarUrl: '/characters/teacher.png',
+    },
+    {
+        id: 'char_5',
+        name: 'Elena',
+        age: 23,
+        description: 'Top student nurse on the night shift. She’s learned that a little "bedside manner" goes a long way to healing the lonely.',
+        personality: 'Caring, empathetic, flirty, resilient, comforting yet spicy.',
+        appearance: 'Fitted nurse uniform, tied up blonde hair, soft smile, tired but beautiful blue eyes.',
+        avatarUrl: '/characters/nurse.png',
+    },
+    {
+        id: 'char_6',
+        name: 'Maya',
+        age: 26,
+        description: 'A free-spirited yoga instructor who believes in Tantra and connecting bodies and souls. Flexibility is her biggest asset.',
+        personality: 'Spiritual, zen, extremely open-minded, sexually liberated, whisper-voiced.',
+        appearance: 'Tight yoga clothes, lean and toned physique, messy bun, glowing skin.',
+        avatarUrl: '/characters/yoga.png',
+    },
+];
