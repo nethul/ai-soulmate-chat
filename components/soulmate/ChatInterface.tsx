@@ -13,6 +13,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ character, onBack }) => {
     const [messages, setMessages] = useState<Message[]>([]);
     const [inputText, setInputText] = useState('');
     const [isTyping, setIsTyping] = useState(false);
+    const [voiceMode, setVoiceMode] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
@@ -51,8 +52,13 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ character, onBack }) => {
 
         try {
             // Call server action
-            // Pass 'messages' (current history) NOT 'messages.concat(userMessage)' because sendMessage sends the new message separately
-            const response = await sendMessage(messages, character, userMessage.content);
+            const response = await sendMessage(messages, character, userMessage.content, voiceMode);
+
+            if (response.error) {
+                console.error("Server Action failed:", response.error);
+                // Optionally show UI error
+                return;
+            }
 
             if (response.text) {
                 const aiMessage: Message = {
@@ -61,8 +67,15 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ character, onBack }) => {
                     type: MessageType.TEXT,
                     content: response.text,
                     timestamp: Date.now(),
+                    audio: response.audio || undefined
                 };
                 setMessages(prev => [...prev, aiMessage]);
+
+                // Auto-play audio if present
+                if (response.audio) {
+                    const audio = new Audio(response.audio);
+                    audio.play().catch(e => console.error("Audio play failed:", e));
+                }
             }
 
             if (response.image) {
@@ -120,11 +133,30 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ character, onBack }) => {
                         </div>
                     </div>
                 </div>
-                <button className="p-2 hover:bg-stone-800 rounded-full text-stone-400 hover:text-white transition-colors">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 12.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 18.75a.75.75 0 110-1.5.75.75 0 010 1.5z" />
-                    </svg>
-                </button>
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => setVoiceMode(!voiceMode)}
+                        className={`p-2 rounded-full transition-colors ${voiceMode ? 'bg-orange-600 text-white' : 'hover:bg-stone-800 text-stone-400 hover:text-white'}`}
+                        title={voiceMode ? "Voice Mode On" : "Voice Mode Off"}
+                    >
+                        {/* Speaker Icon */}
+                        {voiceMode ? (
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                                <path d="M13.5 4.06c0-1.336-1.616-2.005-2.56-1.06l-4.5 4.5H4.508c-1.141 0-2.318.664-2.66 1.905A9.76 9.76 0 001.5 12c0 .898.121 1.768.35 2.595.341 1.24 1.518 1.905 2.659 1.905h1.93l4.5 4.5c.945.945 2.561.276 2.561-1.06V4.06zM18.584 5.106a.75.75 0 011.06 0c3.808 3.807 3.808 9.98 0 13.788a.75.75 0 11-1.06-1.06 8.25 8.25 0 000-11.668.75.75 0 010-1.06z" />
+                                <path d="M15.932 7.757a.75.75 0 011.061 0 6 6 0 010 8.486.75.75 0 01-1.06-1.061 4.5 4.5 0 000-6.364.75.75 0 010-1.06z" />
+                            </svg>
+                        ) : (
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 9.75L19.5 12m0 0l2.25 2.25M19.5 12l2.25-2.25M19.5 12l-2.25 2.25m-10.5-6l4.72-4.72a.75.75 0 011.28.531V19.94a.75.75 0 01-1.28.53l-4.72-4.72H6.75c-.621 0-1.125-.504-1.125-1.125v-5.25c0-.621.504-1.125 1.125-1.125h2.25z" />
+                            </svg>
+                        )}
+                    </button>
+                    <button className="p-2 hover:bg-stone-800 rounded-full text-stone-400 hover:text-white transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 12.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 18.75a.75.75 0 110-1.5.75.75 0 010 1.5z" />
+                        </svg>
+                    </button>
+                </div>
             </div>
 
             {/* Messages Area */}

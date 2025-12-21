@@ -23,5 +23,6 @@ export interface Message {
     role: MessageRole;
     type: MessageType;
     content: string;
+    audio?: string | null;
     timestamp: number;
 }

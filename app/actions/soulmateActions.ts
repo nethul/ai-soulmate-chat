@@ -2,7 +2,7 @@
 
 import { auth } from "@clerk/nextjs/server";
 
-import { GoogleGenAI, FunctionDeclaration, Type, FunctionCall, Content } from "@google/genai";
+import { GoogleGenAI, FunctionDeclaration, Type, FunctionCall, Content, ThinkingLevel } from "@google/genai";
 import { Character, Message, MessageType, MessageRole } from "../../types";
 
 const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
@@ -29,10 +29,11 @@ const sendPhotoTool: FunctionDeclaration = {
     },
 };
 
-export async function sendMessage(history: Message[], character: Character, message: string) {
+export async function sendMessage(history: Message[], character: Character, message: string, voiceResponse: boolean = false) {
     console.log("--- sendMessage Called ---");
     console.log("Message:", message);
     console.log("Character:", character.name);
+    console.log("Voice Response Requested:", voiceResponse);
 
     // Check for cooldown
     const lastImageMsg = history.slice().reverse().find(m => m.role === MessageRole.MODEL && m.type === MessageType.IMAGE);
@@ -118,25 +119,47 @@ export async function sendMessage(history: Message[], character: Character, mess
 
                     if (photoCount >= 1) {
                         console.log("Selfie limit reached for non-logged in user.");
+                        const refuseText = "*blushes* I'd love to show you more, but... maybe we should get to know each other a bit better first? (Please log in to see more photos! 😉)";
+
+                        let refuseAudio = null;
+                        if (voiceResponse) {
+                            const voice = getVoiceForCharacter(character);
+                            refuseAudio = await generateSpeech(refuseText, voice);
+                        }
+
                         return {
-                            text: "*blushes* I'd love to show you more, but... maybe we should get to know each other a bit better first? (Please log in to see more photos! 😉)",
-                            image: null
+                            text: refuseText,
+                            image: null,
+                            audio: refuseAudio
                         };
                     }
                 }
 
                 console.log("Handling sendPhoto tool call...");
-                return await handleImageGeneration(call, character, chatSession);
+                return await handleImageGeneration(call, character, chatSession, voiceResponse);
             }
         }
 
         // Normal text response
         console.log("Returning text response:", result.text);
-        return { text: result.text, image: null };
+
+        // Handle TTS if requested
+        let audioData = null;
+        if (voiceResponse && result.text) {
+            const voice = getVoiceForCharacter(character);
+            audioData = await generateSpeech(result.text, voice);
+        }
+
+        return { text: result.text, image: null, audio: audioData };
 
     } catch (error: any) {
         console.error("Gemini Chat Error:", error);
-        throw new Error(error.message || "Failed to process message");
+        return {
+            text: null,
+            image: null,
+            audio: null,
+            error: error.message || "Failed to process message"
+        };
     }
 }
 
@@ -175,7 +198,7 @@ export async function generateAvatar(appearanceDescription: string): Promise<str
     }
 }
 
-async function handleImageGeneration(call: FunctionCall, character: Character, chatSession: any): Promise<{ text: string | null; image: string | null }> {
+async function handleImageGeneration(call: FunctionCall, character: Character, chatSession: any, voiceResponse: boolean): Promise<{ text: string | null; image: string | null; audio: string | null }> {
     console.log("--- handleImageGeneration Called ---");
     const description = (call.args as any).photoDescription;
     console.log("Photo Description:", description);
@@ -237,9 +260,16 @@ async function handleImageGeneration(call: FunctionCall, character: Character, c
         });
         console.log("Follow-up response received:", followUp.text);
 
+        let audioData = null;
+        if (voiceResponse && followUp.text) {
+            const voice = getVoiceForCharacter(character);
+            audioData = await generateSpeech(followUp.text, voice);
+        }
+
         return {
             text: followUp.text,
-            image: `data:image/png;base64,${base64Image}`
+            image: `data:image/png;base64,${base64Image}`,
+            audio: audioData
         };
 
     } catch (err) {
@@ -254,6 +284,77 @@ async function handleImageGeneration(call: FunctionCall, character: Character, c
                 }
             }]
         });
-        return { text: followUp.text, image: null };
+
+        let audioData = null;
+        if (voiceResponse && followUp.text) {
+            const voice = getVoiceForCharacter(character);
+            audioData = await generateSpeech(followUp.text, voice);
+        }
+
+        return { text: followUp.text, image: null, audio: audioData };
+    }
+}
+
+// Map gender/personality to specific Gemini voices
+// Available voices: 'Puck' (Male), 'Charon' (Male), 'Kore' (Female), 'Aoede' (Female), 'Fenrir' (Male)
+function getVoiceForCharacter(character: Character): string {
+    const text = (character.description + " " + character.personality + " " + character.appearance).toLowerCase();
+
+    // Simple heuristic for gender detection if not explicitly stored
+    const isFemale = text.includes("female") || text.includes("woman") || text.includes("girl") || text.includes("she") || text.includes("her");
+
+    if (isFemale) {
+        // 'Kore' is a good general female voice. 'Aoede' is arguably softer.
+        if (text.includes("soft") || text.includes("gentle") || text.includes("shy")) {
+            return 'Aoede';
+        }
+        return 'Kore';
+    } else {
+        // Male voices
+        if (text.includes("deep") || text.includes("strong") || text.includes("rough")) {
+            return 'Fenrir';
+        }
+        return 'Puck'; // Default male
+    }
+}
+
+async function generateSpeech(text: string, voiceName: string): Promise<string | null> {
+    console.log(`--- generateSpeech Called (${voiceName}) ---`);
+    try {
+        // Use the specific TTS model
+        const ttsModel = ai.getGenerativeModel({ model: 'gemini-2.5-flash-preview' });
+
+        // Use the experimental generateContent with audio response modalilty request
+        const result = await ttsModel.generateContent({
+            contents: [
+                {
+                    role: 'user',
+                    parts: [{ text: `Please read the following text aloud with the voice '${voiceName}':\n\n${text}` }]
+                }
+            ],
+        });
+
+        const response = result.response;
+        let audioData = null;
+
+        if (response.candidates && response.candidates.length > 0) {
+            for (const part of response.candidates[0].content.parts) {
+                if (part.inlineData && part.inlineData.mimeType.startsWith('audio')) {
+                    audioData = part.inlineData.data;
+                    break;
+                }
+            }
+        }
+
+        if (!audioData) {
+            console.warn("No audio data returned from TTS model.");
+            return null;
+        }
+
+        return `data:audio/mp3;base64,${audioData}`;
+
+    } catch (error) {
+        console.error("TTS Generation Error:", error);
+        return null;
     }
 }
