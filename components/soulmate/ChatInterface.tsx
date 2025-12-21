@@ -54,12 +54,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ character, onBack }) => {
             // Call server action
             const response = await sendMessage(messages, character, userMessage.content, voiceMode);
 
-            if (response.error) {
-                console.error("Server Action failed:", response.error);
-                // Optionally show UI error
-                return;
-            }
-
             if (response.text) {
                 const aiMessage: Message = {
                     id: (Date.now() + 1).toString(),

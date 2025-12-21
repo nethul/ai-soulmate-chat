@@ -154,12 +154,7 @@ export async function sendMessage(history: Message[], character: Character, mess
 
     } catch (error: any) {
         console.error("Gemini Chat Error:", error);
-        return {
-            text: null,
-            image: null,
-            audio: null,
-            error: error.message || "Failed to process message"
-        };
+        throw new Error(error.message || "Failed to process message");
     }
 }
 
